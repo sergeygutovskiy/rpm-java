@@ -14,7 +14,14 @@ public class Entity {
     protected int health;
     protected int attackDamage;
 
-    public Entity(String title, int posX, int posZ, boolean aggressive, int maxHealth, int attackDamage)
+    public Entity(
+        String title, 
+        int posX, 
+        int posZ, 
+        boolean aggressive, 
+        int maxHealth, 
+        int attackDamage
+    )
     {
         this.title = title;
         this.posX  = posX;
@@ -29,42 +36,53 @@ public class Entity {
 
     public void update()
     {
+        // finds enemies if only self is aggresive 
         if (aggressive)
         {
+            // finds nearest frienldy entity
             Entity entity = findNearestNotAggressiveEntity();
+            // checks for entity life state (not null)
             if (entity != null)
             {
+                // find dist for target entity 
                 double dist = Math.abs(
-                        Math.sqrt(entity.posX * entity.posX + entity.posZ * entity.posZ)
-                                - Math.sqrt(posX * posX + posZ * posZ)
+                    Math.sqrt(entity.posX * entity.posX + entity.posZ * entity.posZ)
+                    - Math.sqrt(posX * posX + posZ * posZ)
                 );
 
-                if (dist < 2.0) {
-                    attack(entity);
-                } else {
-                    moveTo(entity);
-                }
+                // if dist less then const: 
+                if (dist < 2.0) attack(entity); // attack
+                // else
+                else moveTo(entity); // move in direction to target 
             }
         }
     }
 
     public void attack(Entity entity)
     {
+        GameServer.getInstance().increaseActions();
+
         int damage = attackDamage;
+        // if entity is player then increase attack with difficulty value 
         if (this instanceof EntityPlayer)
-        {
             damage += (int)(0.5 * GameServer.getInstance().getDifficulty());
-            System.out.println(damage + " " + GameServer.getInstance().getDifficulty());
-        }
 
         System.out.print(title + " attacked " + entity.title + " with damage=" + damage);
+
+        // attack entity 
         entity.setHealth(entity.getHealth() - damage);
+
         System.out.print(" [" + entity.title + "'s health: " + entity.health + "]");
         System.out.println("");
 
+        // if target entity died
         if (entity.getHealth() <= 0)
         {
-            System.out.println(entity.title + " died by " + title);
+            System.out.println(
+                "\033[0;31m" + entity.title + " died by " + title + "\033[0m"
+            );
+            
+            // run throw all game's entities and "delete" one that died (set to null)
             for (int i = 0; i < GameServer.getInstance().getEntities().length; i++)
             {
                 if (GameServer.getInstance().getEntities()[i].id == entity.id)
@@ -73,8 +91,8 @@ public class Entity {
                     return;
                 }
             }
-            return;
         }
+        // else if entity is player, then player attacks back 
         else if (entity instanceof EntityPlayer)
         {
             entity.attack(this);
@@ -83,11 +101,16 @@ public class Entity {
 
     public void moveTo(Entity entity)
     {
+        GameServer.getInstance().increaseActions();
+
         System.out.print(this.title + " moved from: " + this.posX + ", " + this.posZ);
 
+        // target for right side of entity -> go right 
         if (posX < entity.posX) posX++;
+        // target for left side of entity -> go left
         else if (posX > entity.posX) posX--;
 
+        // same logic
         if (posZ < entity.posZ) posZ++;
         else if (posZ > entity.posZ) posZ--;
 
@@ -98,29 +121,39 @@ public class Entity {
 
     public Entity findNearestNotAggressiveEntity()
     {
+        // get all entities
         Entity[] entities = GameServer.getInstance().getEntities();
+        // min dist to enemy
         double minDis = 999;
+        // index of target enemy
         int minDisIndex = -1;
 
         for (int i = 0; i < entities.length; i++)
         {
+            // entity alive
             if (entities[i] != null)
             {
+                // calculate dist
                 double dis = Math.abs(
-                        Math.sqrt(entities[i].posX * entities[i].posX + entities[i].posZ * entities[i].posZ)
-                                - Math.sqrt(posX * posX + posZ * posZ)
+                    Math.sqrt(
+                        entities[i].posX * entities[i].posX 
+                        + entities[i].posZ * entities[i].posZ
+                    ) 
+                    - Math.sqrt(posX * posX + posZ * posZ)
                 );
-                if (dis < minDis && !entities[i].getAggressive()) {
+                // checks for new nearest enemy 
+                if (dis < minDis && dis < 20 && !entities[i].getAggressive()) 
+                {
                     minDis = dis;
                     minDisIndex = i;
                 }
             }
         }
 
-        if (minDisIndex == -1)
-            return null;
-        else
-            return entities[minDisIndex];
+        // if no target found then return nothing
+        if (minDisIndex == -1) return null;
+        // else return target
+        else return entities[minDisIndex];
     }
 
     public String getTitle() { return title; }
@@ -143,4 +176,12 @@ public class Entity {
 
     public int getAttackDamage() { return attackDamage; }
     public void setAttackDamage(int attackDamage) { this.attackDamage = attackDamage; }
+
+    @Override
+    public String toString() 
+    { 
+        return new String(
+            "[entity] title: " + title + " health: " + health
+        ); 
+    } 
 }
